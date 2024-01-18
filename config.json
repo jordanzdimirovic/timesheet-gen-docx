@@ -1,0 +1,7 @@
+{
+    "data-directory": "data",
+    "templates": {
+        "invoice": "templates/invoice.docx",
+        "timesheet": "templates/timesheet.docx"
+    }
+}
