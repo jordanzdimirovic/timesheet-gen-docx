@@ -3,5 +3,6 @@
     "templates": {
         "invoice": "templates/invoice.docx",
         "timesheet": "templates/timesheet.docx"
-    }
+    },
+    "hourly_rate": 50
 }

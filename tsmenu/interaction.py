@@ -44,6 +44,8 @@ def generic_select(prompt: str, options: Iterable[tuple[object, str]], transform
             pprint("Invalid response (not in given list). Try again...")
             return generic_select(prompt, options, transform)
         
+        return result
+        
     except ValueError:
         pprint("Invalid response (wrong type). Try again...")
         return generic_select(prompt, options, transform)

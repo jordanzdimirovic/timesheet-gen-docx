@@ -1,23 +1,64 @@
+import os
 from tsdef import *
 from .interaction import *
 from enum import Enum
 
+from datetime import timedelta
+
+import jsonpickle as jp
+
+from tsconfig import TSConfig
+
+std_datefmt_mappings = {
+    "today": lambda: Date.today(),
+    "yesterday": lambda: Date.today() - timedelta(1)
+}
+
+def std_datefmt(s: str) -> Date:
+    s = s.lower()
+
+    if s in std_datefmt_mappings: return std_datefmt_mappings[s]()
+
+    return Date(*reversed(list(map(lambda part: int(part.strip()), s.split('/')))))
 
 def menu_main() -> None:
     """Show main menu"""
+    collection: Collection = menu_collection()
+
     selected = generic_select("What would you like to do?", [
         (1, "Create New Invoice"),
         (2, "Create Invoice From Timesheet(s)"),
         (3, "Create Timesheet"),
         (4, "Render Invoices"),
         (5, "Render Timesheets")
-        
     ])
     
-    if selected == 1:
-        # Get invoice
-        invoice = menu_invoice()
+    to_write = None
+
+    match selected:
+        case 1:
+            to_write = menu_invoice()
+
+        case 2:
+            to_write = menu_invoice_from_timesheets(collection)
+
+        case 3:
+            to_write = menu_timesheet()
+
+        case _:
+            print("Invalid menu option...")
+            return
         
+    type_name = type(to_write).__name__.lower()
+
+    collection.store(to_write, generic_get(f"Name for new '{type_name}'"))
+        
+
+def menu_collection() -> Collection:
+    dirname = generic_get("Collection directory")
+    os.makedirs(dirname, exist_ok=True)
+    return Collection(dirname)
+
 
 def menu_invoice_party(party_name: str) -> InvoiceParty:
     """Show menu to create an invoice party"""
@@ -32,44 +73,68 @@ def menu_invoice_party(party_name: str) -> InvoiceParty:
 def menu_invoice_lines() -> list[InvoiceLine]:
     result: list[InvoiceLine] = []
     hprint("Invoice lines (Ctrl+C to stop)")
-    try:
-        result.append(InvoiceLine(
-            generic_get("Quantity", default=1, typecast=int, do_strip=True),
-            generic_get("Description"),
-            generic_get("Price (each)", typecast=float, do_strip=True)
-        ))        
-        
-    except KeyboardInterrupt:
-        pprint("Finished getting invoice lines...")
-        pass
+    while True:
+        try:
+            result.append(InvoiceLine(
+                generic_get("Quantity", default=1, typecast=int, do_strip=True),
+                generic_get("Description"),
+                generic_get("Price (each)", typecast=float, do_strip=True)
+            ))        
+            
+        except KeyboardInterrupt:
+            pprint("Finished getting invoice lines...")
+            break
 
 
 def menu_invoice() -> Invoice:
     """Show menu for invoice"""
     return Invoice(
         generic_get("Invoice number"),
-        generic_get("Issue date"),
-        generic_get("Due date"),
+        generic_get("Issue date", typecast=std_datefmt),
+        generic_get("Due date", typecast=std_datefmt),
         menu_invoice_party("Bill To"),
         menu_invoice_party("Bill From"),
         menu_invoice_lines()
     )
     
 
-def menu_invoice_from_timesheets(timesheets: list[Timesheet]) -> Invoice:
+def menu_invoice_from_timesheets(collection: Collection) -> Invoice:
+    timesheets = collection.timesheets
     return Invoice(
         generic_get("Invoice number"),
-        max(d for d in map(lambda entry: entry.))
+        start_date := max(entry.day for timesheet in timesheets for entry in timesheet.entries),
+        start_date + timedelta(generic_get("Due period (days from last timesheet entry)", 14, typecast=int, do_strip=True)),
+        menu_invoice_party("Bill To"),
+        menu_invoice_party("Bill From"),
+        [
+            InvoiceLine(
+                ts.total_hrs,
+                f"Hour of work (week starting {ts.week_of})",
+                TSConfig.get("hourly_rate")
+            ) for i, ts in enumerate(timesheets)
+        ]
     )
 
 
 def menu_timesheet() -> Timesheet:
     """Show menu for timesheet"""
+    entries = []
+    hprint("Timesheet entries (Ctrl+C to stop)")
+    try:
+        while True:
+            entries.append(menu_timesheet_entry())
+
     
+    except KeyboardInterrupt:
+        print("Finished getting timesheet entries")
+
+    return Timesheet(entries)
     
 def menu_timesheet_entry() -> TimesheetEntry:
     """Show menu for timesheet entry"""
     return TimesheetEntry (
-        
+        generic_get("Day", typecast=std_datefmt),
+        generic_get("Hours worked", typecast=float),
+        generic_get("Description", "")
     )
     
