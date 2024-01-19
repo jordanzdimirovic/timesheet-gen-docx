@@ -7,6 +7,7 @@ from types import NoneType
 from tshelpers import iter_read
 import jsonpickle as jp
 
+from tshelpers.helpers import pprint_date
 
 class Weekday(Enum):
     MONDAY = "Monday"
@@ -16,6 +17,9 @@ class Weekday(Enum):
     FRIDAY = "Friday"
     SATURDAY = "Saturday"
     SUNDAY = "Sunday"
+    
+    
+WEEKDAY_NAMES = [v.value for v in Weekday]
     
 
 @dataclass
@@ -32,6 +36,9 @@ class InvoiceLine:
     
     @property
     def price(self): return self.unit_price * self.quantity
+    
+    @property
+    def price_pretty(self): return f"${self.price:.2f}"
 
 
 @dataclass
@@ -45,24 +52,45 @@ class Invoice:
     
     @property
     def total(self): return sum(line.price for line in self.lines)
+    
+    @property
+    def total_pretty(self): return f"${self.total:.2f}"
 
+    @property
+    def date_pretty(self) -> str: return pprint_date(self.date)
+    
+    @property
+    def due_date_pretty(self) -> str: return pprint_date(self.due_date)
+    
 
 @dataclass
 class TimesheetEntry:
     day: Date
     hours: float
     description: str
+    
+    @property
+    def day_of_week(self) -> str: return WEEKDAY_NAMES[self.day.weekday()]    
 
 
 @dataclass
 class Timesheet:
+    name: str
+    title: str
+    hourly_pay: float
+    
     entries: list[TimesheetEntry]
     
+    @property
+    def hourly_pay_fmt(self): return f"${self.hourly_pay:.2f}"
+
     @property
     def total_hrs(self): return sum(entry.hours for entry in self.entries)
     
     @property
-    def week_of(self): return (earliest := min(entry.day for entry in self.entries)) - timedelta(earliest.weekday)
+    def week_of(self): return pprint_date((earliest := min(entry.day for entry in self.entries)) - timedelta(earliest.weekday()))
+
+
 
     @staticmethod
     def from_dict(json: dict):
@@ -92,8 +120,9 @@ class Collection:
             for data in iter_read(self.directory_path):
                 res.append(jp.decode(data))
 
-        except:
+        except Exception as e: 
             # Ignore invalids
+            print(f"Decode failed: {e}")
             pass
 
         return res
@@ -105,4 +134,5 @@ class Collection:
 
     @property
     def timesheets(self):
-        return [value for value in self.items if type(value) is Timesheet]
+        items = self.items
+        return [value for value in items if type(value) is Timesheet]

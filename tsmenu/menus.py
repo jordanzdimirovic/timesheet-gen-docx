@@ -3,6 +3,8 @@ from tsdef import *
 from .interaction import *
 from enum import Enum
 
+from tsdocx import render_all
+
 from datetime import timedelta
 
 import jsonpickle as jp
@@ -18,19 +20,20 @@ def std_datefmt(s: str) -> Date:
     s = s.lower()
 
     if s in std_datefmt_mappings: return std_datefmt_mappings[s]()
-
+    elif "+" in s: return Date.today() + timedelta(int(s.replace("+", '').strip()))
+    elif "-" in s: return Date.today() - timedelta(int(s.replace("-", '').strip()))
+    
     return Date(*reversed(list(map(lambda part: int(part.strip()), s.split('/')))))
 
-def menu_main() -> None:
+def menu_main(collection: Collection) -> None:
     """Show main menu"""
-    collection: Collection = menu_collection()
+    
 
     selected = generic_select("What would you like to do?", [
         (1, "Create New Invoice"),
         (2, "Create Invoice From Timesheet(s)"),
         (3, "Create Timesheet"),
-        (4, "Render Invoices"),
-        (5, "Render Timesheets")
+        (4, "Render")
     ])
     
     to_write = None
@@ -45,14 +48,27 @@ def menu_main() -> None:
         case 3:
             to_write = menu_timesheet()
 
+        case 4:
+            menu_render(collection)
+
         case _:
             print("Invalid menu option...")
             return
         
-    type_name = type(to_write).__name__.lower()
+    if to_write:
+        type_name = type(to_write).__name__.lower()
+        collection.store(to_write, generic_get(f"Name for new '{type_name}'"))
+            
 
-    collection.store(to_write, generic_get(f"Name for new '{type_name}'"))
-        
+def menu_render(collection: Collection) -> None:
+    no_items_rendered = render_all(
+        collection,
+        TSConfig.get("templates:timesheet"),
+        TSConfig.get("templates:invoice"),
+        generic_get("Render output path (relative to collection)", "rendered")
+    )
+
+    print(f"{no_items_rendered} items successfully rendered!")
 
 def menu_collection() -> Collection:
     dirname = generic_get("Collection directory")
@@ -92,8 +108,8 @@ def menu_invoice() -> Invoice:
         generic_get("Invoice number"),
         generic_get("Issue date", typecast=std_datefmt),
         generic_get("Due date", typecast=std_datefmt),
-        menu_invoice_party("Bill To"),
         menu_invoice_party("Bill From"),
+        menu_invoice_party("Bill To"),
         menu_invoice_lines()
     )
     
@@ -104,14 +120,14 @@ def menu_invoice_from_timesheets(collection: Collection) -> Invoice:
         generic_get("Invoice number"),
         start_date := max(entry.day for timesheet in timesheets for entry in timesheet.entries),
         start_date + timedelta(generic_get("Due period (days from last timesheet entry)", 14, typecast=int, do_strip=True)),
-        menu_invoice_party("Bill To"),
         menu_invoice_party("Bill From"),
+        menu_invoice_party("Bill To"),
         [
             InvoiceLine(
                 ts.total_hrs,
                 f"Hour of work (week starting {ts.week_of})",
                 TSConfig.get("hourly_rate")
-            ) for i, ts in enumerate(timesheets)
+            ) for ts in timesheets
         ]
     )
 
@@ -128,7 +144,12 @@ def menu_timesheet() -> Timesheet:
     except KeyboardInterrupt:
         print("Finished getting timesheet entries")
 
-    return Timesheet(entries)
+    return Timesheet(
+        TSConfig.get("contractor:name"),
+        generic_get("Timesheet title (i.e., project)", default="Project"),
+        TSConfig.get("hourly_rate"),
+        entries
+    )
     
 def menu_timesheet_entry() -> TimesheetEntry:
     """Show menu for timesheet entry"""

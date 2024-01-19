@@ -4,5 +4,8 @@
         "invoice": "templates/invoice.docx",
         "timesheet": "templates/timesheet.docx"
     },
-    "hourly_rate": 50
+    "hourly_rate": 50,
+    "contractor": {
+        "name": "Jordan Zdimirovic"
+    }
 }
