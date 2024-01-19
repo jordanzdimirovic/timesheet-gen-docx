@@ -129,10 +129,10 @@ class Collection:
 
     @property
     def invoices(self):
-        return [value for value in self.items if type(value) is Invoice]
+        return sorted((value for value in self.items if type(value) is Invoice), key = lambda inv: inv.date)
 
 
     @property
     def timesheets(self):
         items = self.items
-        return [value for value in items if type(value) is Timesheet]
+        return sorted((value for value in items if type(value) is Timesheet), key = lambda ts: ts.week_of)
