@@ -22,7 +22,7 @@ class TSConfig:
 
 
     @staticmethod
-    def get(key: str, default: object = None) -> object:
+    def get(key: str, default: callable = None) -> object:
         if type(key) is not str: raise ValueError(f"Key '{key}' was not a string")
         
         curr = TSConfig.__DATA
@@ -30,7 +30,7 @@ class TSConfig:
         
         for part in key_spl:
             if type(curr) is not dict or part not in curr:
-                if default: return default
+                if default: return default()
                 else: raise KeyError(f"Configuration key not found: {key}")
             
             curr = curr[part]

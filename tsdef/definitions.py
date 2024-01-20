@@ -20,7 +20,12 @@ class Weekday(Enum):
     
     
 WEEKDAY_NAMES = [v.value for v in Weekday]
-    
+
+
+class PartyType(Enum):
+    From = "Bill From"
+    To = "Bill To"
+
 
 @dataclass
 class InvoiceParty:
@@ -42,12 +47,19 @@ class InvoiceLine:
 
 
 @dataclass
+class Payment:
+    bsb: str
+    account: str
+
+
+@dataclass
 class Invoice:
     identifier: str
     date: Date
     due_date: Date
     bill_from: InvoiceParty
     bill_to: InvoiceParty
+    payment: Payment
     lines: list[InvoiceLine]
     
     @property
@@ -88,8 +100,10 @@ class Timesheet:
     def total_hrs(self): return sum(entry.hours for entry in self.entries)
     
     @property
-    def week_of(self): return pprint_date((earliest := min(entry.day for entry in self.entries)) - timedelta(earliest.weekday()))
+    def week_of(self): return (earliest := min(entry.day for entry in self.entries)) - timedelta(earliest.weekday())
 
+    @property
+    def week_of_pretty(self): return pprint_date(self.week_of)
 
 
     @staticmethod
@@ -102,7 +116,6 @@ class Timesheet:
             raise ValueError("Invalid timesheet dictionary") from e
 
 type CollectionItem = Invoice | Timesheet
-
 
 @dataclass
 class Collection:
@@ -122,7 +135,7 @@ class Collection:
 
         except Exception as e: 
             # Ignore invalids
-            print(f"Decode failed: {e}")
+            print(f"File couldn't be decoded: {e}")
             pass
 
         return res

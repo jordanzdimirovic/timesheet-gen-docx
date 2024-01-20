@@ -1,0 +1,16 @@
+{
+    "templates": {
+        "invoice": "templates/invoice.docx",
+        "timesheet": "templates/timesheet.docx"
+    },
+    "hourly_rate": <integer>,
+    "contractor": {
+        "name": <full name, string>,
+        "address": <full address, string>,
+        "business_number": <ABN or similar, string>
+    },
+    "payment": {
+        "bsb": <bank number, string>,
+        "account": <account number, string>
+    }
+}

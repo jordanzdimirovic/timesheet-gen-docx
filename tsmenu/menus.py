@@ -76,14 +76,23 @@ def menu_collection() -> Collection:
     return Collection(dirname)
 
 
-def menu_invoice_party(party_name: str) -> InvoiceParty:
+def menu_invoice_party(party_type: PartyType) -> InvoiceParty:
     """Show menu to create an invoice party"""
-    hprint(f"Create party [{party_name}]")
-    return InvoiceParty(
-        generic_get("Name"),
-        generic_get("Address"),
-        generic_get("Business number (e.g. ABN)")
-    )
+    hprint(f"Create party [{party_type.value}]")
+    if party_type == PartyType.From:
+        print("Filling from config: 'contractor'")
+        return InvoiceParty(
+            TSConfig.get("contractor:name", lambda: generic_get("Name")),
+            TSConfig.get("contractor:address", lambda: generic_get("Address")),
+            TSConfig.get("contractor:business_number", lambda: generic_get("Business number (e.g. ABN)"))
+        )
+    
+    else:
+        return InvoiceParty(
+            generic_get("Name"),
+            generic_get("Address"),
+            generic_get("Business number (e.g. ABN)")
+        )
     
 
 def menu_invoice_lines() -> list[InvoiceLine]:
@@ -108,8 +117,12 @@ def menu_invoice() -> Invoice:
         generic_get("Invoice number"),
         generic_get("Issue date", typecast=std_datefmt),
         generic_get("Due date", typecast=std_datefmt),
-        menu_invoice_party("Bill From"),
-        menu_invoice_party("Bill To"),
+        menu_invoice_party(PartyType.From),
+        menu_invoice_party(PartyType.To),
+        Payment(
+            TSConfig.get("payment:bsb"),
+            TSConfig.get("payment:account")
+        ),
         menu_invoice_lines()
     )
     
@@ -120,8 +133,12 @@ def menu_invoice_from_timesheets(collection: Collection) -> Invoice:
         generic_get("Invoice number"),
         start_date := max(entry.day for timesheet in timesheets for entry in timesheet.entries),
         start_date + timedelta(generic_get("Due period (days from last timesheet entry)", 14, typecast=int, do_strip=True)),
-        menu_invoice_party("Bill From"),
-        menu_invoice_party("Bill To"),
+        menu_invoice_party(PartyType.From),
+        menu_invoice_party(PartyType.To),
+        Payment(
+            TSConfig.get("payment:bsb"),
+            TSConfig.get("payment:account")
+        ),
         [
             InvoiceLine(
                 ts.total_hrs,

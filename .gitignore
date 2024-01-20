@@ -6,3 +6,6 @@ env
 __pycache__
 
 data
+
+# Config could contain PII
+config.json
