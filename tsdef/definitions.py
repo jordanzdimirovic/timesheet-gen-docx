@@ -84,6 +84,8 @@ class TimesheetEntry:
     @property
     def day_of_week(self) -> str: return WEEKDAY_NAMES[self.day.weekday()]    
 
+    @property
+    def day_pretty(self) -> str: return pprint_date(self.day)   
 
 @dataclass
 class Timesheet:

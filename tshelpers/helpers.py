@@ -27,9 +27,13 @@ def iter_open(directory: str, match_fname: regex = None, fmode: str = 'r'):
                     yield f
 
 
-def iter_read(directory: str, match_fname: regex = None, transform: callable = None):
+def iter_read(directory: str, match_fname: regex = None, transform: callable = None, errors: list = None):
     for file in iter_open(directory, match_fname, 'r'):
-        yield transform(file.read()) if transform else file.read()
+        try:
+            yield transform(file.read()) if transform else file.read()
+        except UnicodeDecodeError as e:
+            if errors: errors.append(file.name)
+            else: print(f"Failed to decode file: '{file.name}'. Skipping...")
 
 
 def dictify(obj: object):
