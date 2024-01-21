@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import date
 import os
 import re
@@ -40,21 +41,21 @@ def dictify(obj: object):
     obj = deepcopy(obj)
     if not hasattr(obj, "__dict__"):
         # Non-dict type object
-        if isinstance(curr, list):
-            for i in range(len(curr)):
-                curr[i] = dictify(curr[i])
+        if isinstance(obj, list):
+            for i in range(len(obj)):
+                obj[i] = dictify(obj[i])
                 
-            return curr
+            return obj
                 
-        elif not any(isinstance(curr[k], T) for T in (int, str, float, NoneType)):
+        elif not any(isinstance(obj, T) for T in (int, str, float, NoneType)):
             try:
-                return str(curr)
+                return str(obj)
 
             except:
-                raise ValueError(f"Couldn't serialise field [{k} = {curr[k]}] (type: {type(curr[k])})")
+                raise ValueError(f"Couldn't serialise field [{k} = {obj[k]}] (type: {type(obj[k])})")
         
         else:
-            return curr
+            return obj
             
         
     curr = obj.__dict__
@@ -82,3 +83,14 @@ def dictify(obj: object):
                 raise ValueError(f"Couldn't serialise field [{k} = {curr[k]}] (type: {type(curr[k])})")
     
     return curr
+
+
+if __name__ == "__main__":
+    @dataclass
+    class Mine:
+        a: int
+        b: list
+        c: list["Mine"]
+    
+    test_obj = Mine(2, [1,2,3], [Mine(1, [1,2,3], [Mine(1, [1,2,3], [])])])
+    print(dictify(test_obj))
