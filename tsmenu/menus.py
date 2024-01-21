@@ -33,7 +33,8 @@ def menu_main(collection: Collection) -> None:
         (1, "Create New Invoice"),
         (2, "Create Invoice From Timesheet(s)"),
         (3, "Create Timesheet"),
-        (4, "Render")
+        (4, "Create Timesheet From CSV"),
+        (5, "Render")
     ])
     
     to_write = None
@@ -49,6 +50,9 @@ def menu_main(collection: Collection) -> None:
             to_write = menu_timesheet()
 
         case 4:
+            to_write = menu_timesheet_csv()
+
+        case 5:
             menu_render(collection)
 
         case _:
@@ -59,6 +63,45 @@ def menu_main(collection: Collection) -> None:
         type_name = type(to_write).__name__.lower()
         collection.store(to_write, generic_get(f"Name for new '{type_name}'"))
             
+            
+def menu_timesheet_csv() -> Timesheet:
+    # Get path to the csv file
+    csv_path: str = generic_get("CSV timesheet entries path")
+    
+    if not os.path.isfile(csv_path):
+        print(f"CSV file {csv_path} doesn't exist..! Try again...")
+        return menu_timesheet_csv()
+    
+    # Read the CSV file
+    with open(csv_path, "r") as f:
+        lines = [l.removesuffix('\n').split(',') for l in f.readlines()]
+        
+    if not all(len(l) == 3 for l in lines):
+        print("CSV needs 3 per line!")
+        return
+    
+    # Convert each to a timesheet entry
+    try:
+        entries = [
+            TimesheetEntry(
+                std_datefmt(l[0]),
+                float(l[1]),
+                str(l[2])
+            ) for l in lines
+        ]
+        
+    except ValueError:
+        print("At least one line in the CSV was an invalid timesheet entry!\nEach entry needs 3 values:\n -> date (dd/mm/yy)\n -> hours (float)\n -> description (str)")
+        return
+    
+    # Return a timesheet
+    return Timesheet(
+        TSConfig.get("contractor:name"),
+        generic_get("Timesheet title (i.e., project)", default="Project"),
+        TSConfig.get("hourly_rate"),
+        entries
+    )
+
 
 def menu_render(collection: Collection) -> None:
     no_items_rendered = render_all(
